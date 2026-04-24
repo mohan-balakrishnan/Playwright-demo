@@ -15,7 +15,7 @@ export default defineConfig({
     baseURL: 'https://leaftaps.com/opentaps',
     trace: 'on',
     video: 'on',
-    screenshot: 'only-on-failure',
+    screenshot: 'on',
     headless: true,
   },
 

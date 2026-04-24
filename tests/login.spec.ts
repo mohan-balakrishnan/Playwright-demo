@@ -4,6 +4,9 @@ test('TC001 - Verify login page elements are displayed', async ({ page }) => {
   // Navigate to login page
   await page.goto('https://leaftaps.com/opentaps');
   
+  // Take screenshot of login page
+  await page.screenshot({ path: 'test-results/01-login-page.png', fullPage: true });
+  
   // Locate login elements
   const username = page.locator('#username');
   const password = page.locator('#password');
@@ -13,6 +16,9 @@ test('TC001 - Verify login page elements are displayed', async ({ page }) => {
   await expect(username).toBeVisible();
   await expect(password).toBeVisible();
   await expect(loginBtn).toBeVisible();
+  
+  // Take screenshot after verification
+  await page.screenshot({ path: 'test-results/02-elements-verified.png', fullPage: true });
   
   // Verify page title or URL
   expect(page.url()).toContain('leaftaps.com/opentaps');
