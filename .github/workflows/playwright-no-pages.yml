@@ -1,4 +1,4 @@
-name: Playwright Tests
+name: Playwright Tests (No Pages)
 
 on:
   workflow_dispatch:  # Manual trigger only
@@ -7,10 +7,6 @@ jobs:
   test:
     timeout-minutes: 60
     runs-on: ubuntu-latest
-    permissions:
-      contents: write
-      pages: write
-      id-token: write
     
     steps:
     - name: Checkout code
@@ -56,26 +52,12 @@ jobs:
           echo "✅ Test execution completed" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
           echo "### 📁 Available Artifacts:" >> $GITHUB_STEP_SUMMARY
-          echo "- **HTML Report**: Download \`playwright-report\` artifact" >> $GITHUB_STEP_SUMMARY
+          echo "- **HTML Report**: Download \`playwright-report\` artifact and open index.html" >> $GITHUB_STEP_SUMMARY
           echo "- **Test Results**: Download \`test-results\` artifact (videos, traces, screenshots)" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
-          echo "### 🔗 View Report Online:" >> $GITHUB_STEP_SUMMARY
-          echo "The HTML report will be deployed to GitHub Pages (see deployment job)" >> $GITHUB_STEP_SUMMARY
+          echo "### 📥 How to View Report:" >> $GITHUB_STEP_SUMMARY
+          echo "1. Scroll down to **Artifacts** section" >> $GITHUB_STEP_SUMMARY
+          echo "2. Download **playwright-report**" >> $GITHUB_STEP_SUMMARY
+          echo "3. Extract the ZIP file" >> $GITHUB_STEP_SUMMARY
+          echo "4. Open **index.html** in your browser" >> $GITHUB_STEP_SUMMARY
         fi
-    
-    - name: Deploy to GitHub Pages
-      uses: peaceiris/actions-gh-pages@v3
-      if: always()
-      with:
-        github_token: ${{ secrets.GITHUB_TOKEN }}
-        publish_dir: ./playwright-report
-        destination_dir: reports/${{ github.run_number }}
-    
-    - name: Add Report Link to Summary
-      if: always()
-      run: |
-        echo "## 🌐 View HTML Report Online" >> $GITHUB_STEP_SUMMARY
-        echo "" >> $GITHUB_STEP_SUMMARY
-        echo "**Report URL:** https://${{ github.repository_owner }}.github.io/${{ github.event.repository.name }}/reports/${{ github.run_number }}/" >> $GITHUB_STEP_SUMMARY
-        echo "" >> $GITHUB_STEP_SUMMARY
-        echo "📝 **Note:** First-time setup requires enabling GitHub Pages in repository settings" >> $GITHUB_STEP_SUMMARY
