@@ -12,7 +12,7 @@ export class LoginPage {
     this.page = page;
     this.usernameInput = page.locator('#username');
     this.passwordInput = page.locator('#password');
-    this.loginButton = page.locator('input[type="submit"][value="Login"]');
+    this.loginButton = page.locator('.decorativeSubmit');
     this.errorMessage = page.locator('#errorDiv');
     this.logo = page.locator('.decorativeSubmit');
   }

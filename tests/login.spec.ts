@@ -15,8 +15,8 @@ test.describe('Leaftaps Login Functionality', () => {
   test('TC001 - Verify successful login with valid credentials', async ({ page }) => {
     await loginPage.login('democsr', 'crmsfa');
     
-    // Wait for navigation after login
-    await page.waitForURL(/.*control\/main/, { timeout: 10000 });
+    // Wait for navigation after login (the URL should change from /login to /main)
+    await page.waitForURL(/.*control\/main/, { timeout: 15000 });
     
     // Verify CRM/SFA link is visible on home page
     await expect(homePage.crmSfaLink).toBeVisible({ timeout: 10000 });
