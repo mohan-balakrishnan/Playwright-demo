@@ -1,0 +1,26 @@
+{
+  "name": "leaftaps-playwright-automation",
+  "version": "1.0.0",
+  "description": "Playwright TypeScript automation framework for Leaftaps CRM",
+  "main": "index.js",
+  "scripts": {
+    "test": "npx playwright test",
+    "test:headed": "npx playwright test --headed",
+    "test:debug": "npx playwright test --debug",
+    "report": "npx playwright show-report",
+    "trace": "npx playwright show-trace"
+  },
+  "keywords": [
+    "playwright",
+    "typescript",
+    "automation",
+    "testing"
+  ],
+  "author": "",
+  "license": "ISC",
+  "devDependencies": {
+    "@playwright/test": "^1.48.0",
+    "@types/node": "^22.10.2",
+    "typescript": "^5.7.2"
+  }
+}
