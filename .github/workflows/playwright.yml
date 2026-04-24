@@ -59,8 +59,10 @@ jobs:
           PASSED=$(jq '[.suites[].specs[].tests[] | select(.status == "expected")] | length' test-results/results.json)
           FAILED=$(jq '[.suites[].specs[].tests[] | select(.status == "unexpected")] | length' test-results/results.json)
           SKIPPED=$(jq '[.suites[].specs[].tests[] | select(.status == "skipped")] | length' test-results/results.json)
+          FLAKY=$(jq '[.suites[].specs[].tests[] | select(.status == "flaky")] | length' test-results/results.json)
           DURATION=$(jq '.stats.duration' test-results/results.json)
           DURATION_SEC=$(echo "scale=1; $DURATION / 1000" | bc)
+          START_TIME=$(jq -r '.stats.startTime' test-results/results.json)
           
           # Calculate pass rate
           if [ "$TOTAL" -gt 0 ]; then
@@ -81,11 +83,17 @@ jobs:
             STATUS_TEXT="MOST FAILED"
           fi
           
+          # Quick Stats Bar
+          echo "### 📊 Quick Stats" >> $GITHUB_STEP_SUMMARY
+          echo "🟢 Passed: $PASSED | 🔴 Failed: $FAILED | ⏭️ Skipped: $SKIPPED | ⚠️ Flaky: $FLAKY | ⏱️ ${DURATION_SEC}s | 📈 ${PASS_RATE}%" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          
           # Overall Results
           echo "### Overall Results" >> $GITHUB_STEP_SUMMARY
           echo "✅ **Passed:** $PASSED tests" >> $GITHUB_STEP_SUMMARY
           echo "❌ **Failed:** $FAILED tests" >> $GITHUB_STEP_SUMMARY
           echo "⏭️ **Skipped:** $SKIPPED tests" >> $GITHUB_STEP_SUMMARY
+          echo "⚠️ **Flaky:** $FLAKY tests" >> $GITHUB_STEP_SUMMARY
           echo "⏱️ **Duration:** ${DURATION_SEC}s" >> $GITHUB_STEP_SUMMARY
           echo "📈 **Pass Rate:** ${PASS_RATE}%" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
@@ -101,16 +109,49 @@ jobs:
           # Extract test details
           jq -r '.suites[].specs[] | .tests[] as $test | .title as $title | "\($title)|\($test.status)|\($test.results[0].duration)"' test-results/results.json | \
           awk -F'|' 'BEGIN{count=1} {
-            status = ($2 == "expected") ? "✅ Passed" : ($2 == "skipped") ? "⏭️ Skipped" : "❌ Failed"
+            status = ($2 == "expected") ? "✅ Passed" : ($2 == "skipped") ? "⏭️ Skipped" : ($2 == "flaky") ? "⚠️ Flaky" : "❌ Failed"
             duration = sprintf("%.1fs", $3/1000)
             printf "| %d | %s | %s | %s |\n", count++, $1, status, duration
           }' >> $GITHUB_STEP_SUMMARY
           
           echo "" >> $GITHUB_STEP_SUMMARY
           
+          # Performance Metrics
+          echo "### ⚡ Performance Metrics" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          
+          # Get fastest and slowest tests
+          FASTEST=$(jq -r '[.suites[].specs[].tests[].results[0] | select(.duration != null)] | min_by(.duration) | .duration' test-results/results.json)
+          SLOWEST=$(jq -r '[.suites[].specs[].tests[].results[0] | select(.duration != null)] | max_by(.duration) | .duration' test-results/results.json)
+          FASTEST_SEC=$(echo "scale=1; $FASTEST / 1000" | bc)
+          SLOWEST_SEC=$(echo "scale=1; $SLOWEST / 1000" | bc)
+          
+          if [ "$TOTAL" -gt 0 ]; then
+            AVERAGE=$(echo "scale=1; $DURATION / $TOTAL / 1000" | bc)
+          else
+            AVERAGE=0
+          fi
+          
+          echo "| Metric | Value |" >> $GITHUB_STEP_SUMMARY
+          echo "|--------|-------|" >> $GITHUB_STEP_SUMMARY
+          echo "| ⚡ Fastest Test | ${FASTEST_SEC}s |" >> $GITHUB_STEP_SUMMARY
+          echo "| 🐌 Slowest Test | ${SLOWEST_SEC}s |" >> $GITHUB_STEP_SUMMARY
+          echo "| 📊 Average Duration | ${AVERAGE}s |" >> $GITHUB_STEP_SUMMARY
+          echo "| ⏱️ Total Duration | ${DURATION_SEC}s |" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          
+          # Flaky Tests
+          if [ "$FLAKY" -gt 0 ]; then
+            echo "### ⚠️ Flaky Tests (Passed After Retry)" >> $GITHUB_STEP_SUMMARY
+            echo "" >> $GITHUB_STEP_SUMMARY
+            
+            jq -r '.suites[].specs[] | select(.tests[].status == "flaky") | .title as $title | .tests[] | select(.status == "flaky") | "- **\($title)** - Passed after \(.results | length) attempts"' test-results/results.json >> $GITHUB_STEP_SUMMARY
+            
+            echo "" >> $GITHUB_STEP_SUMMARY
+          fi
+          
           # Failed Tests Details
-          FAILED_COUNT=$(jq '[.suites[].specs[].tests[] | select(.status == "unexpected")] | length' test-results/results.json)
-          if [ "$FAILED_COUNT" -gt 0 ]; then
+          if [ "$FAILED" -gt 0 ]; then
             echo "### ❌ Failed Tests Details" >> $GITHUB_STEP_SUMMARY
             echo "" >> $GITHUB_STEP_SUMMARY
             
@@ -119,11 +160,48 @@ jobs:
             echo "" >> $GITHUB_STEP_SUMMARY
           fi
           
+          # Environment Information
+          echo "### 🖥️ Test Environment" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "| Property | Value |" >> $GITHUB_STEP_SUMMARY
+          echo "|----------|-------|" >> $GITHUB_STEP_SUMMARY
+          echo "| 🌐 Browser | Chromium |" >> $GITHUB_STEP_SUMMARY
+          echo "| 📦 Node.js | 20.x |" >> $GITHUB_STEP_SUMMARY
+          echo "| 💻 OS | Ubuntu Latest |" >> $GITHUB_STEP_SUMMARY
+          echo "| 🎭 Playwright | 1.48.0 |" >> $GITHUB_STEP_SUMMARY
+          echo "| 👁️ Headless | Yes |" >> $GITHUB_STEP_SUMMARY
+          echo "| 🔄 Workers | 1 |" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          
+          # Git Information
+          echo "### 📝 Git Information" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "| Property | Value |" >> $GITHUB_STEP_SUMMARY
+          echo "|----------|-------|" >> $GITHUB_STEP_SUMMARY
+          echo "| 🌿 Branch | \`${{ github.ref_name }}\` |" >> $GITHUB_STEP_SUMMARY
+          echo "| 📌 Commit | \`${{ github.sha }}\` |" >> $GITHUB_STEP_SUMMARY
+          echo "| 👤 Author | ${{ github.actor }} |" >> $GITHUB_STEP_SUMMARY
+          echo "| 💬 Message | ${{ github.event.head_commit.message }} |" >> $GITHUB_STEP_SUMMARY
+          echo "| 🔗 Workflow | [#${{ github.run_number }}](https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}) |" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          
+          # Execution Timeline
+          echo "### ⏱️ Execution Timeline" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "| Event | Time |" >> $GITHUB_STEP_SUMMARY
+          echo "|-------|------|" >> $GITHUB_STEP_SUMMARY
+          echo "| 🚀 Started | $START_TIME |" >> $GITHUB_STEP_SUMMARY
+          echo "| ⏱️ Duration | ${DURATION_SEC}s |" >> $GITHUB_STEP_SUMMARY
+          echo "| 🏁 Status | $STATUS_TEXT |" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          
           # Artifacts section
           echo "### 📁 Available Artifacts" >> $GITHUB_STEP_SUMMARY
-          echo "- 📄 **HTML Report**: Download \`playwright-report\` artifact" >> $GITHUB_STEP_SUMMARY
-          echo "- 🎬 **Videos & Traces**: Download \`test-results\` artifact" >> $GITHUB_STEP_SUMMARY
-          echo "- 📸 **Screenshots**: Included in both artifacts" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "| Artifact | Description | Link |" >> $GITHUB_STEP_SUMMARY
+          echo "|----------|-------------|------|" >> $GITHUB_STEP_SUMMARY
+          echo "| 📄 HTML Report | Interactive test report with screenshots | [Download](https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}#artifacts) |" >> $GITHUB_STEP_SUMMARY
+          echo "| 🎬 Test Results | Videos, traces, and screenshots | [Download](https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}#artifacts) |" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
           echo "### 🔗 View Report Online:" >> $GITHUB_STEP_SUMMARY
           echo "The HTML report will be deployed to GitHub Pages (see deployment job)" >> $GITHUB_STEP_SUMMARY
