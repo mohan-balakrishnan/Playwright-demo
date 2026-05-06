@@ -18,13 +18,10 @@ export default defineConfig({
     screenshot: 'on',
     headless: true,
     
-    // HAR file recording - separate file per test, skip media files
+    // HAR file recording - separate file per test
     recordHar: {
       mode: 'minimal',
-      urlFilter: (url) => {
-        // Skip images, videos, fonts, and other media files
-        return !url.match(/\.(jpg|jpeg|png|gif|svg|webp|mp4|webm|avi|mov|woff|woff2|ttf|eot|ico|css)$/i);
-      },
+      content: 'omit',
     },
   },
 
